@@ -1,0 +1,46 @@
+{
+	"pipelines": [
+		{
+			"channel_name": "warns",
+			"from_channel": "chatlogs",
+			"gate": {
+				"content": "^.warn"
+			},
+			"parser": {
+				"source": "content",
+				"pattern": ".warn %{WORD:PlayFabID} %{WORD:Reason}",
+				"output_type": "embed",
+				"additional_embed_props": ["Author", "Channel"]
+			},
+			"channel_id": 1213505932944740433
+		},
+		{
+			"channel_name": "warns",
+			"from_channel": "chatlogs",
+			"gate": {
+				"content": "^.warn"
+			},
+			"parser": {
+				"source": "content",
+				"pattern": ".warn %{WORD:PlayFabID} %{WORD:Reason}",
+				"output_type": "content",
+				"content_format": "[{utctime}]: User {PlayFabID} was warned due to {Reason} by {author}"
+			},
+			"channel_id": 1213505932944740433
+		},
+		{
+			"channel_name": "bans",
+			"from_channel": "chatlogs",
+			"gate": {
+				"embed": {
+					"Message": "^.ban"
+				}
+			},
+			"channel_id": 1210988905734611064
+		},
+		{
+			"channel_name": "chatlogs",
+			"channel_id": 1187552820115800177
+		}
+	]
+}
