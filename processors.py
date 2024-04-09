@@ -17,44 +17,68 @@ def pipeline_gate(pipeline: ChatPipeline):
             return False
         gate = pipeline.gate
         if gate.content:
-            return regex_match(gate.content, message.content)
+            is_match = regex_match(gate.content, message.content)
+            return is_match
         return False
 
     return processor
 
 
 TRANSPORT_PROPS: dict[str, Callable[[Message], str]] = {
-    "author": lambda m: m.author.name,
-    "utctime": lambda m: m.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-    "channel": lambda m: m.channel.name,
+    "Author": lambda m: m.author.name,
+    "UtcTime": lambda m: m.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+    "Channel": lambda m: m.channel.name,
 }
 
 
 def parse_message(parser: PipelineParser, message: Message) -> Embed | str:
-    pattern = parser.pattern
-    additional_props = (
-        parser.additional_embed_props
-        if parser.output_type == "embed"
-        else TRANSPORT_PROPS.keys()
-    )
-    if parser.source != "content":
+    input_pattern = parser.input.pattern
+    output_pattern = parser.output.pattern
+
+    if not isinstance(input_pattern, str):
+        raise TypeError("Non string input patterns are not supported")
+
+    if parser.input.type != "content":
         raise NotImplementedError("Currently only parser.source=content is supported")
-    content = message.content
-    match = Grok(pattern).match(content)
-    props = dict(**match)
-    additional_props = dict(
-        (prop, TRANSPORT_PROPS[prop.lower()](message)) for prop in additional_props
+
+    if parser.output.type == "embed" and not isinstance(output_pattern, list):
+        raise NotImplementedError(
+            "Type list is the only supported pattern type for embed output"
+        )
+
+    if parser.output.type == "content" and not isinstance(output_pattern, str):
+        raise NotImplementedError(
+            "Type str is the only supported pattern type for content output"
+        )
+
+    input_content = message.content
+    match = Grok(input_pattern).match(input_content)
+    resolved_transport_props = dict(
+        (key, TRANSPORT_PROPS[key](message)) for key in TRANSPORT_PROPS.keys()
     )
-    combined_props = dict(**props, **additional_props)
-    if parser.output_type == "embed":
+    available_props = dict(**match, **resolved_transport_props)
+    output_pattern_keys = (
+        output_pattern
+        if isinstance(output_pattern, list)
+        else available_props
+        # `else available_props` because should only happen (due to above type checks) when output type is content
+        # and in that case we want to use everything for formatting output string
+        # since selection will be done by str.format
+    )
+    selected_props = dict((key, available_props[key]) for key in output_pattern_keys)
+    if parser.output.type == "embed":
         embed = Embed()
         [
-            embed.add_field(name=key, value=combined_props[key], inline=False)
-            for key in combined_props.keys()
+            embed.add_field(name=key, value=selected_props[key], inline=False)
+            for key in selected_props.keys()
         ]
         return embed
+    elif parser.output.type == "content":
+        return parser.output.pattern.format(**selected_props)
     else:
-        return parser.content_format.format(**combined_props)
+        raise NotImplementedError(
+            f"Only supported output types are embed and content, received {parser.output.type}"
+        )
 
 
 def pipeline_sender(pipeline: ChatPipeline, client: DiscordClient):

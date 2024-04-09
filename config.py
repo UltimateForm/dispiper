@@ -1,6 +1,7 @@
 from os import environ
 import json
 from discord import Embed, Message
+from dataclasses import dataclass
 
 
 class Env:
@@ -22,7 +23,15 @@ class ChatPipelineGate:
             self.embed.add_field(name="Message", value=embed_raw.get("Message"))
 
 
+@dataclass
+class PipelineParserNode:
+    pattern: str | list[str]
+    type: str
+
+
 class PipelineParser:
+    input: PipelineParserNode
+    output: PipelineParserNode
     source: str
     pattern: str
     output_type: str
@@ -30,11 +39,8 @@ class PipelineParser:
     content_format: str | None
 
     def __init__(self, raw: dict):
-        self.source = raw["source"]
-        self.pattern = raw["pattern"]
-        self.output_type = raw["output_type"]
-        self.additional_embed_props = raw.get("additional_embed_props") or []
-        self.content_format = raw.get("content_format")
+        self.input = PipelineParserNode(**raw["input"])
+        self.output = PipelineParserNode(**raw["output"])
 
 
 class ChatPipeline:
@@ -71,5 +77,4 @@ class Config:
 
 if __name__ == "__main__":
     con = Config()
-    print(con.channels)
-    firstEmbed = con.pipelines[0].gate.embed
+    print(con)
