@@ -7,26 +7,70 @@
 				"content": "^.warn"
 			},
 			"parser": {
-				"source": "content",
-				"pattern": ".warn %{WORD:PlayFabID} %{WORD:Reason}",
-				"output_type": "embed",
-				"additional_embed_props": ["Author", "Channel"]
+				"input": {
+					"pattern": ".warn %{WORD:PlayFabID} %{WORD:Reason}",
+					"type": "content"
+				},
+				"output": {
+					"pattern": ["PlayFabID", "Author", "Channel", "Reason"],
+					"type": "embed"
+				}
 			},
 			"channel_id": 1213505932944740433
 		},
 		{
 			"channel_name": "warns",
 			"from_channel": "chatlogs",
-			"gate": {
+			"gate": { 
 				"content": "^.warn"
 			},
 			"parser": {
-				"source": "content",
-				"pattern": ".warn %{WORD:PlayFabID} %{WORD:Reason}",
-				"output_type": "content",
-				"content_format": "[{utctime}]: User {PlayFabID} was warned due to {Reason} by {author}"
+				"input": {
+					"pattern": ".warn %{WORD:PlayFabID} %{WORD:Reason}",
+					"type": "content"
+				},
+				"output": {
+					"pattern": "[{UtcTime}]: User {PlayFabID} was warned due to {Reason} by {Author}",
+					"type": "content"
+				}
 			},
 			"channel_id": 1213505932944740433
+		},
+		{
+			"channel_name": "unwarns",
+			"from_channel": "chatlogs",
+			"gate": { 
+				"content": "^.removewarn"
+			},
+			"parser": {
+				"input": {
+					"pattern": ".removewarn %{WORD:PlayFabID} %{WORD:Reason}",
+					"type": "content"
+				},
+				"output": {
+					"pattern": "[{UtcTime}]: User {PlayFabID} has been unwarned by {Author}",
+					"type": "content"
+				}
+			},
+			"channel_id": 1213894350350852128
+		},
+		{
+			"channel_name": "status",
+			"from_channel": "warns",
+			"gate": { 
+				"content": "D1247A0B618D12E was warned"
+			},
+			"parser": {
+				"input": {
+					"pattern": ".%{DATESTAMP:date}]: User D1247A0B618D12E was warned due to FFA by %{WORD:warner}",
+					"type": "content"
+				},
+				"output": {
+					"pattern": "Today ({date}) monke has been warned again... by {warner}",
+					"type": "content"
+				}
+			},
+			"channel_id": 1213542630756065341
 		},
 		{
 			"channel_name": "bans",
