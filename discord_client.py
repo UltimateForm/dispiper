@@ -1,26 +1,39 @@
 import asyncio
 from typing import Any, Optional
 import discord
-from config import Env
-
 from reactivex import Subject, operators
+from config import Env, InputMessage
 
 
-class DiscordClient(discord.Client, Subject[discord.Message]):
+class DiscordClient(discord.Client):
     _channel_ids: set[int] = set()
     _channels: list[discord.TextChannel] = []
+    output: Subject[discord.Message]
+    input: Subject[InputMessage]
 
-    def __init__(self, channels: set[int] = set(), **options: Any):
+    def __init__(self, channels: set[int], **options: Any):
         intents = discord.Intents.default()
         intents.message_content = True
         self._channel_ids = channels
         discord.Client.__init__(self, intents=intents, **options)
-        Subject.__init__(self)
+        self.output = Subject()
+        self.input = Subject()
+        self.input.subscribe(on_next=self._input_on_next)
 
     async def on_ready(self):
         for known_channel_id in self._channel_ids:
             channel = await self.fetch_channel(known_channel_id)
             self._channels.append(channel)
+
+    def _input_on_next(self, msg: InputMessage):
+        if msg.content:
+            asyncio.create_task(
+                self.send_to_channel(msg.channel_name, content=msg.content)
+            )
+        elif msg.embed:
+            asyncio.create_task(self.send_to_channel(msg.channel_name, embed=msg.embed))
+        else:
+            raise ValueError(f"Encounterd unexpected input message type: {repr(msg)}")
 
     async def send_to_channel(
         self,
@@ -40,7 +53,7 @@ class DiscordClient(discord.Client, Subject[discord.Message]):
         await target_channel.send(content=content, embed=embed)
 
     async def on_message(self, message: discord.message.Message):
-        self.on_next(message)
+        self.output.on_next(message)
 
 
 if __name__ == "__main__":
@@ -52,4 +65,4 @@ if __name__ == "__main__":
     client.pipe(operators.filter(lambda x: x.content == "ping")).subscribe(
         on_next=lambda x: asyncio.create_task(x.reply("pong"))
     )
-    asyncio.run(client.start(env_conf.D_TOKEN))
+    asyncio.run(client.start(env_conf.d_token))

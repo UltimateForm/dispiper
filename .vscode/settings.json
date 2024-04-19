@@ -1,0 +1,6 @@
+{
+	"pylint.args": [
+		"--rcfile=./lint.rc",
+		"--jobs=0"
+	]
+}

@@ -1,26 +1,29 @@
 from os import environ
 import json
-from discord import Embed, Message
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from dacite import from_dict
+from discord import Embed
 
 
 class Env:
-    D_TOKEN: str
+    d_token: str
 
     def __init__(self):
-        self.D_TOKEN = environ["D_TOKEN"]
+        self.d_token = environ["D_TOKEN"]
 
 
-class ChatPipelineGate:
+@dataclass
+class InputMessage:
     content: str | None
     embed: Embed | None
+    channel_id: int
+    channel_name: str
 
-    def __init__(self, raw: dict):
-        self.content = raw.get("content")
-        if "embed" in raw.keys():
-            embed_raw = raw["embed"]
-            self.embed = Embed()
-            self.embed.add_field(name="Message", value=embed_raw.get("Message"))
+
+@dataclass
+class ChatPipelineGate:
+    content: str | None
+    embed: dict | None
 
 
 @dataclass
@@ -29,52 +32,38 @@ class PipelineParserNode:
     type: str
 
 
+@dataclass
 class PipelineParser:
     input: PipelineParserNode
     output: PipelineParserNode
-    source: str
-    pattern: str
-    output_type: str
-    additional_embed_props: list[str]
-    content_format: str | None
-
-    def __init__(self, raw: dict):
-        self.input = PipelineParserNode(**raw["input"])
-        self.output = PipelineParserNode(**raw["output"])
 
 
+@dataclass
 class ChatPipeline:
     gate: ChatPipelineGate | None
-    channel_id: str
+    channel_id: int
     channel_name: str
     from_channel: str | None
     parser: PipelineParser | None
 
-    def __init__(self, raw: dict):
-        self.channel_name = raw["channel_name"]
-        self.from_channel = raw.get("from_channel")
-        self.channel_id = raw["channel_id"]
-        raw_keys = raw.keys()
-        if "gate" in raw_keys:
-            self.gate = ChatPipelineGate(raw["gate"])
-        if "parser" in raw_keys:
-            self.parser = PipelineParser(raw["parser"])
 
-
+@dataclass
 class Config:
-    pipelines: list[ChatPipeline] = []
-    channels: set[int] = set()
-    _raw_dict: dict
+    pipelines: list[ChatPipeline] = field(default_factory=lambda: [])
+    channels: set[int] = field(init=False)
 
-    def __init__(self):
-        with open("./config.json", "r") as j:
-            self._raw_dict = json.loads(j.read())
-        for raw_pipeline in self._raw_dict["pipelines"]:
-            pipeline = ChatPipeline(raw_pipeline)
-            self.pipelines.append(pipeline)
-            self.channels.add(pipeline.channel_id)
+    def __post_init__(self):
+        self.channels = set(pipeline.channel_id for pipeline in self.pipelines)
+
+
+def load_config(path: str = "./config.json"):
+    json_data: dict = None
+    with open(path, "r", encoding="utf8") as j:
+        json_data = json.loads(j.read())
+    config_data = from_dict(data_class=Config, data=json_data)
+    return config_data
 
 
 if __name__ == "__main__":
-    con = Config()
-    print(con)
+    config = load_config()
+    print(config)
