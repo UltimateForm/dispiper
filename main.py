@@ -11,12 +11,12 @@ pipelines = of(*config.pipelines)
 
 
 def pipeline_subscription(pipeline: ChatPipeline):
-    client.output.pipe(operators.filter(pipeline_gate(pipeline))).subscribe(
-        pipeline_sender(pipeline, client.input)
+    client.input.pipe(operators.filter(pipeline_gate(pipeline))).subscribe(
+        pipeline_sender(pipeline, client.output)
     )
 
 
-client.input.subscribe(on_next=lambda x: print(f"Sending message: {repr(x)}"))
+client.output.subscribe(on_next=lambda x: print(f"Sending message: {repr(x)}"))
 
 pipelines.subscribe(pipeline_subscription)
 

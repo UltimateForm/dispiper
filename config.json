@@ -21,7 +21,7 @@
 		{
 			"channel_name": "warns",
 			"from_channel": "chatlogs",
-			"gate": { 
+			"gate": {
 				"content": "^.warn"
 			},
 			"parser": {
@@ -39,7 +39,7 @@
 		{
 			"channel_name": "unwarns",
 			"from_channel": "chatlogs",
-			"gate": { 
+			"gate": {
 				"content": "^.removewarn"
 			},
 			"parser": {
@@ -55,9 +55,27 @@
 			"channel_id": 1213894350350852128
 		},
 		{
+			"channel_name": "chatlogs",
+			"from_channel": "chatlogs",
+			"gate": {
+				"content": "^embed"
+			},
+			"parser": {
+				"input": {
+					"pattern": "embed message:%{WORD:Message} var1:%{WORD:Var1} var2:%{WORD:Var2}",
+					"type": "content"
+				},
+				"output": {
+					"pattern": ["Message", "Var1", "Var2"],
+					"type": "embed"
+				}
+			},
+			"channel_id": 1187552820115800177
+		},
+		{
 			"channel_name": "status",
 			"from_channel": "warns",
-			"gate": { 
+			"gate": {
 				"content": "D1247A0B618D12E was warned"
 			},
 			"parser": {
@@ -73,14 +91,14 @@
 			"channel_id": 1213542630756065341
 		},
 		{
-			"channel_name": "bans",
+			"channel_name": "warns",
 			"from_channel": "chatlogs",
 			"gate": {
 				"embed": {
-					"Message": "^.ban"
+					"Message": "^.warn"
 				}
 			},
-			"channel_id": 1210988905734611064
+			"channel_id": 1213505932944740433
 		},
 		{
 			"channel_name": "chatlogs",

@@ -8,24 +8,24 @@ from config import Env, InputMessage
 class DiscordClient(discord.Client):
     _channel_ids: set[int] = set()
     _channels: list[discord.TextChannel] = []
-    output: Subject[discord.Message]
-    input: Subject[InputMessage]
+    input: Subject[discord.Message]
+    output: Subject[InputMessage]
 
     def __init__(self, channels: set[int], **options: Any):
         intents = discord.Intents.default()
         intents.message_content = True
         self._channel_ids = channels
         discord.Client.__init__(self, intents=intents, **options)
-        self.output = Subject()
         self.input = Subject()
-        self.input.subscribe(on_next=self._input_on_next)
+        self.output = Subject()
+        self.output.subscribe(on_next=self._output_on_next)
 
     async def on_ready(self):
         for known_channel_id in self._channel_ids:
             channel = await self.fetch_channel(known_channel_id)
             self._channels.append(channel)
 
-    def _input_on_next(self, msg: InputMessage):
+    def _output_on_next(self, msg: InputMessage):
         if msg.content:
             asyncio.create_task(
                 self.send_to_channel(msg.channel_name, content=msg.content)
@@ -53,7 +53,7 @@ class DiscordClient(discord.Client):
         await target_channel.send(content=content, embed=embed)
 
     async def on_message(self, message: discord.message.Message):
-        self.output.on_next(message)
+        self.input.on_next(message)
 
 
 if __name__ == "__main__":

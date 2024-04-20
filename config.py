@@ -23,7 +23,7 @@ class InputMessage:
 @dataclass
 class ChatPipelineGate:
     content: str | None
-    embed: dict | None
+    embed: dict[str, str] | None
 
 
 @dataclass

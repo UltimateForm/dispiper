@@ -1,13 +1,9 @@
-import re
 from typing import Callable
 from reactivex import Observer
 from pygrok import Grok
 from discord import Embed, Message
 from config import ChatPipeline, InputMessage, PipelineParser
-
-
-def regex_match(expr: str, value: str):
-    return bool(re.search(expr, value))
+from text_processing import regex_match, embed_to_dict
 
 
 def pipeline_gate(pipeline: ChatPipeline):
@@ -15,9 +11,26 @@ def pipeline_gate(pipeline: ChatPipeline):
         if message.channel.name != pipeline.from_channel:
             return False
         gate = pipeline.gate
-        if gate.content:
+        if gate.content and message.content:
             is_match = regex_match(gate.content, message.content)
             return is_match
+        if gate.embed and message.embeds:
+            first_embed = message.embeds[0]
+            gate_keys = gate.embed.keys()
+            embed_dict = embed_to_dict(first_embed.description)
+            message_embed_as_dict = dict(
+                (key, value)
+                for (key, value) in embed_dict.items()
+                if key and value and key in gate_keys
+            )
+            if not bool(message_embed_as_dict):
+                # message embed has no elligible fields
+                return False
+            all_match = all(
+                regex_match(gate.embed[key], value)
+                for (key, value) in message_embed_as_dict.items()
+            )
+            return all_match
         return False
 
     return processor
@@ -98,7 +111,7 @@ def pipeline_sender(pipeline: ChatPipeline, input_observer: Observer[InputMessag
             else:
                 input_message.content = message.content
         elif message.embeds:
-            first_embed = next(message.embeds, None)
+            first_embed = next(iter(message.embeds), None)
             if first_embed:
                 input_message.embed = first_embed
         input_observer.on_next(input_message)
