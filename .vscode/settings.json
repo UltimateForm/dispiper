@@ -2,5 +2,13 @@
 	"pylint.args": [
 		"--rcfile=./lint.rc",
 		"--jobs=0"
-	]
+	],
+	"python.testing.unittestArgs": [
+		"-v",
+		"-s",
+		"./tests",
+		"-p",
+		"*test.py"
+	],
+	"python.testing.unittestEnabled": true,
 }

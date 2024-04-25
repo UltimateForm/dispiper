@@ -17,7 +17,7 @@ def pipeline_gate(pipeline: ChatPipeline):
         if gate.embed and message.embeds:
             first_embed = message.embeds[0]
             gate_keys = gate.embed.keys()
-            embed_dict = embed_to_dict(first_embed.description)
+            embed_dict = embed_to_dict(first_embed)
             message_embed_as_dict = dict(
                 (key, value)
                 for (key, value) in embed_dict.items()
@@ -50,9 +50,6 @@ def parse_message(parser: PipelineParser, message: Message) -> Embed | str:
     if not isinstance(input_pattern, str):
         raise TypeError("Non string input patterns are not supported")
 
-    if parser.input.type != "content":
-        raise NotImplementedError("Currently only parser.source=content is supported")
-
     if parser.output.type == "embed" and not isinstance(output_pattern, list):
         raise NotImplementedError(
             "Type list is the only supported pattern type for embed output"
@@ -65,6 +62,10 @@ def parse_message(parser: PipelineParser, message: Message) -> Embed | str:
 
     input_content = message.content
     match = Grok(input_pattern).match(input_content)
+    if not match:
+        raise ValueError(
+            f"No match found for '{input_pattern}' on '{input_content}'. Make sure your pipeline gate is correct."
+        )
     resolved_transport_props = dict(
         (key, func(message)) for (key, func) in TRANSPORT_PROPS.items()
     )
@@ -86,7 +87,7 @@ def parse_message(parser: PipelineParser, message: Message) -> Embed | str:
             for (key, value) in selected_props.items()
         ]
         return embed
-    elif parser.output.type == "content":
+    if parser.output.type == "content":
         return parser.output.pattern.format(**selected_props)
     else:
         raise NotImplementedError(

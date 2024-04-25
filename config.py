@@ -28,8 +28,14 @@ class ChatPipelineGate:
 
 @dataclass
 class PipelineParserNode:
-    pattern: str | list[str]
+    pattern: str | list[str] | dict
     type: str
+
+    def __post_init__(self):
+        if isinstance(self.pattern, dict) and self.type != "embed":
+            raise ValueError(
+                "Pattern of type dict is only supported with parser node of type embed"
+            )
 
 
 @dataclass
