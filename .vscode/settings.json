@@ -8,7 +8,11 @@
 		"-s",
 		"./tests",
 		"-p",
-		"*test.py"
+		"*_test.py"
 	],
-	"python.testing.unittestEnabled": true,
+	"python.testing.pytestEnabled": true,
+	"python.testing.pytestArgs": [
+		"tests"
+	],
+	"python.testing.unittestEnabled": false,
 }
