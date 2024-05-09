@@ -1,3 +1,4 @@
+from collections import ChainMap
 from typing import Callable
 from reactivex import Observer
 from pygrok import Grok
@@ -47,7 +48,7 @@ def parse_message(parser: PipelineParser, message: Message) -> Embed | str:
     input_pattern = parser.input.pattern
     output_pattern = parser.output.pattern
 
-    if not isinstance(input_pattern, str):
+    if not isinstance(input_pattern, str) and not isinstance(input_pattern, dict):
         raise TypeError("Non string input patterns are not supported")
 
     if parser.output.type == "embed" and not isinstance(output_pattern, list):
@@ -60,16 +61,39 @@ def parse_message(parser: PipelineParser, message: Message) -> Embed | str:
             "Type str is the only supported pattern type for content output"
         )
 
-    input_content = message.content
-    match = Grok(input_pattern).match(input_content)
-    if not match:
+    matches: list[dict[str, str]]
+    input_content: str | dict[str, str]
+    if parser.input.type == "embed":
+        if message.embeds is None or len(message.embeds) == 0:
+            raise ValueError(f"Message {message.id} has no embeds to be parsed")
+        input_embed: Embed = message.embeds[0]
+        input_embed_dict = embed_to_dict(input_embed)
+        input_content = input_embed_dict
+        if isinstance(input_pattern, str):
+            parse_sources = input_embed_dict.values()
+            matches = [Grok(input_pattern).match(text) for text in parse_sources]
+        elif isinstance(input_content, dict):
+            input_keys = parser.input.pattern.keys()
+            matches = [
+                Grok(input_pattern[key]).match(input_embed_dict.get(key, ""))
+                for key in input_keys
+            ]
+    elif parser.input.type == "content":
+        input_content = message.content
+        match = Grok(input_pattern).match(input_content)
+        matches = [match]
+    else:
+        raise ValueError(f"Parser of type {parser.input.type} is not supported")
+    matches = [match for match in matches if match is not None]
+    if not matches or not any(matches):
         raise ValueError(
             f"No match found for '{input_pattern}' on '{input_content}'. Make sure your pipeline gate is correct."
         )
+    matches_merged = dict(ChainMap(*matches))
     resolved_transport_props = dict(
         (key, func(message)) for (key, func) in TRANSPORT_PROPS.items()
     )
-    available_props = dict(**match, **resolved_transport_props)
+    available_props = {**matches_merged, **resolved_transport_props}
     output_pattern_keys = (
         output_pattern
         if isinstance(output_pattern, list)
@@ -82,10 +106,8 @@ def parse_message(parser: PipelineParser, message: Message) -> Embed | str:
     selected_props = dict((key, available_props[key]) for key in output_pattern_keys)
     if parser.output.type == "embed":
         embed = Embed()
-        [
+        for key, value in selected_props.items():
             embed.add_field(name=key, value=value, inline=False)
-            for (key, value) in selected_props.items()
-        ]
         return embed
     if parser.output.type == "content":
         return parser.output.pattern.format(**selected_props)
