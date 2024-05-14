@@ -2,14 +2,13 @@ import asyncio
 from typing import Any, Optional
 import discord
 from reactivex import Subject, operators
-from config import Env, InputMessage
-
+from config import Env, MessageEvent
 
 class DiscordClient(discord.Client):
     _channel_ids: set[int] = set()
     _channels: list[discord.TextChannel] = []
     input: Subject[discord.Message]
-    output: Subject[InputMessage]
+    output: Subject[MessageEvent]
 
     def __init__(self, channels: set[int], **options: Any):
         intents = discord.Intents.default()
@@ -18,14 +17,13 @@ class DiscordClient(discord.Client):
         discord.Client.__init__(self, intents=intents, **options)
         self.input = Subject()
         self.output = Subject()
-        self.output.subscribe(on_next=self._output_on_next)
 
     async def on_ready(self):
         for known_channel_id in self._channel_ids:
             channel = await self.fetch_channel(known_channel_id)
             self._channels.append(channel)
 
-    def _output_on_next(self, msg: InputMessage):
+    def send_message(self, msg: MessageEvent):
         if msg.content:
             asyncio.create_task(
                 self.send_to_channel(msg.channel_name, content=msg.content)

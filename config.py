@@ -13,7 +13,7 @@ class Env:
 
 
 @dataclass
-class InputMessage:
+class MessageEvent:
     content: str | None
     embed: Embed | None
     channel_id: int
@@ -39,9 +39,17 @@ class PipelineParserNode:
 
 
 @dataclass
+class EmbedOptions:
+    title: str | None
+    color: int | None
+    description: str | None
+
+
+@dataclass
 class PipelineParser:
     input: PipelineParserNode
     output: PipelineParserNode
+    embed_options: EmbedOptions | None
 
 
 @dataclass

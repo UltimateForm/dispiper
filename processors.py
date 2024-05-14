@@ -3,7 +3,7 @@ from typing import Callable
 from reactivex import Observer
 from pygrok import Grok
 from discord import Embed, Message
-from config import ChatPipeline, InputMessage, PipelineParser
+from config import ChatPipeline, EmbedOptions, MessageEvent, PipelineParser
 from text_processing import regex_match, embed_to_dict
 
 
@@ -44,7 +44,17 @@ TRANSPORT_PROPS: dict[str, Callable[[Message], str]] = {
 }
 
 
+def apply_embed_options(embed: Embed, options: EmbedOptions):
+    if options.title:
+        embed.title = options.title
+    if options.color:
+        embed.color = options.color
+    if options.description:
+        embed.description = options.description
+
+
 def parse_message(parser: PipelineParser, message: Message) -> Embed | str:
+    print(f"Parsing {message}")
     input_pattern = parser.input.pattern
     output_pattern = parser.output.pattern
 
@@ -108,6 +118,8 @@ def parse_message(parser: PipelineParser, message: Message) -> Embed | str:
         embed = Embed()
         for key, value in selected_props.items():
             embed.add_field(name=key, value=value, inline=False)
+        if parser.embed_options:
+            apply_embed_options(embed, parser.embed_options)
         return embed
     if parser.output.type == "content":
         return parser.output.pattern.format(**selected_props)
@@ -117,26 +129,24 @@ def parse_message(parser: PipelineParser, message: Message) -> Embed | str:
         )
 
 
-def pipeline_sender(pipeline: ChatPipeline, input_observer: Observer[InputMessage]):
+def pipeline_sender(pipeline: ChatPipeline, input_observer: Observer[MessageEvent]):
     def send_to_channel(message: Message):
-        input_message = InputMessage(
+        input_message = MessageEvent(
             None, None, pipeline.channel_id, pipeline.channel_name
         )
-        if message.content:
-            if pipeline.parser:
-                msg = parse_message(pipeline.parser, message)
-                if isinstance(msg, str):
-                    input_message.content = msg
-                elif isinstance(msg, Embed):
-                    input_message.embed = msg
-                else:
-                    raise ValueError(f"Ecountered unexpected message type: {msg}")
+        if pipeline.parser:
+            msg = parse_message(pipeline.parser, message)
+            if isinstance(msg, str):
+                input_message.content = msg
+            elif isinstance(msg, Embed):
+                input_message.embed = msg
             else:
-                input_message.content = message.content
-        elif message.embeds:
-            first_embed = next(iter(message.embeds), None)
-            if first_embed:
-                input_message.embed = first_embed
+                raise ValueError(f"Ecountered unexpected message type: {msg}")
+        else:
+            input_message.content = message.content
+            input_message.embed = (
+                message.embeds[0] if message.embeds and len(message.embeds) else None
+            )
         input_observer.on_next(input_message)
 
     return send_to_channel

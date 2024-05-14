@@ -68,6 +68,11 @@
 				"output": {
 					"pattern": ["Message", "Var1", "Var2"],
 					"type": "embed"
+				},
+				"embed_options": {
+					"color": 15844367,
+					"title": "Test title",
+					"description": "description description description description description"
 				}
 			},
 			"channel_id": 1187552820115800177
@@ -109,6 +114,52 @@
 				"output": {
 					"pattern": ["UtcTime", "StaffName", "StaffId", "CulpritId", "Reason"],
 					"type": "embed"
+				},
+				"embed_options": {
+					"color": 15548997,
+					"title": "Punishment log",
+					"description": "This was sent from chatlogs channel"
+				}
+			},
+			"channel_id": 1213505932944740433
+		},
+		{
+			"channel_name": "chatlogs",
+			"from_channel": "chatlogs",
+			"gate": {
+				"content": "^code"
+			},
+			"parser": {
+				"input": {
+					"pattern": "^code %{GREEDYDATA:all}",
+					"type": "content"
+				},
+				"output": {
+					"pattern": "`{all}`",
+					"type": "content"
+				}
+			},
+			"channel_id": 1187552820115800177
+		},
+		{
+			"channel_name": "warns",
+			"from_channel": "chatlogs",
+			"parser": {
+				"input": {
+					"pattern": {
+						"Sender": "%{GREEDYDATA:StaffName} \\(%{WORD:StaffId}\\)",
+						"Message": ".warn %{WORD:CulpritId} %{WORD:Reason}"
+					},
+					"type": "embed"
+				},
+				"output": {
+					"pattern": ["UtcTime", "StaffName", "StaffId", "CulpritId", "Reason"],
+					"type": "embed"
+				},
+				"embed_options": {
+					"color": 15548997,
+					"title": "Punishment log",
+					"description": "This was sent from chatlogs channel"
 				}
 			},
 			"channel_id": 1213505932944740433
