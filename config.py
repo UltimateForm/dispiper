@@ -29,10 +29,10 @@ class ChatPipelineGate:
 @dataclass
 class PipelineParserNode:
     pattern: str | list[str] | dict
-    type: str
+    msg_type: str
 
     def __post_init__(self):
-        if isinstance(self.pattern, dict) and self.type != "embed":
+        if isinstance(self.pattern, dict) and self.msg_type != "embed":
             raise ValueError(
                 "Pattern of type dict is only supported with parser node of type embed"
             )
@@ -47,9 +47,31 @@ class EmbedOptions:
 
 @dataclass
 class PipelineParser:
-    input: PipelineParserNode
-    output: PipelineParserNode
+    input: PipelineParserNode | None
+    output: PipelineParserNode | None
     embed_options: EmbedOptions | None
+
+    def __post_init__(self):
+        if self.output:
+            if self.output.msg_type == "embed" and not isinstance(
+                self.output.pattern, list
+            ):
+                raise NotImplementedError(
+                    "Type list is the only supported pattern type for embed output"
+                )
+            if self.output.msg_type == "content" and not isinstance(
+                self.output.pattern, str
+            ):
+                raise NotImplementedError(
+                    "Type str is the only supported pattern type for content output"
+                )
+        if self.input:
+            if not isinstance(self.input.pattern, str) and not isinstance(
+                self.input.pattern, dict
+            ):
+                raise TypeError(
+                    f"Type {type(self.input.pattern).__name__} is not supported for input pattern"
+                )
 
 
 @dataclass

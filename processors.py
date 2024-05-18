@@ -3,12 +3,20 @@ from typing import Callable
 from reactivex import Observer
 from pygrok import Grok
 from discord import Embed, Message
-from config import ChatPipeline, EmbedOptions, MessageEvent, PipelineParser
+from config import (
+    ChatPipeline,
+    EmbedOptions,
+    MessageEvent,
+    PipelineParser,
+    PipelineParserNode,
+)
 from text_processing import regex_match, embed_to_dict
 
 
 def pipeline_gate(pipeline: ChatPipeline):
     def processor(message: Message):
+        if not pipeline.gate:
+            return False
         if message.channel.name != pipeline.from_channel:
             return False
         gate = pipeline.gate
@@ -53,27 +61,11 @@ def apply_embed_options(embed: Embed, options: EmbedOptions):
         embed.description = options.description
 
 
-def parse_message(parser: PipelineParser, message: Message) -> Embed | str:
-    print(f"Parsing {message}")
-    input_pattern = parser.input.pattern
-    output_pattern = parser.output.pattern
-
-    if not isinstance(input_pattern, str) and not isinstance(input_pattern, dict):
-        raise TypeError("Non string input patterns are not supported")
-
-    if parser.output.type == "embed" and not isinstance(output_pattern, list):
-        raise NotImplementedError(
-            "Type list is the only supported pattern type for embed output"
-        )
-
-    if parser.output.type == "content" and not isinstance(output_pattern, str):
-        raise NotImplementedError(
-            "Type str is the only supported pattern type for content output"
-        )
-
+def parse_from_input(node: PipelineParserNode, message: Message) -> dict[str, str]:
+    input_pattern = node.pattern
     matches: list[dict[str, str]]
     input_content: str | dict[str, str]
-    if parser.input.type == "embed":
+    if node.msg_type == "embed":
         if message.embeds is None or len(message.embeds) == 0:
             raise ValueError(f"Message {message.id} has no embeds to be parsed")
         input_embed: Embed = message.embeds[0]
@@ -83,50 +75,65 @@ def parse_message(parser: PipelineParser, message: Message) -> Embed | str:
             parse_sources = input_embed_dict.values()
             matches = [Grok(input_pattern).match(text) for text in parse_sources]
         elif isinstance(input_content, dict):
-            input_keys = parser.input.pattern.keys()
+            input_keys = node.pattern.keys()
             matches = [
                 Grok(input_pattern[key]).match(input_embed_dict.get(key, ""))
                 for key in input_keys
             ]
-    elif parser.input.type == "content":
+    elif node.msg_type == "content":
         input_content = message.content
         match = Grok(input_pattern).match(input_content)
         matches = [match]
     else:
-        raise ValueError(f"Parser of type {parser.input.type} is not supported")
-    matches = [match for match in matches if match is not None]
+        raise ValueError(f"Parser of type {node.msg_type} is not supported")
     if not matches or not any(matches):
         raise ValueError(
             f"No match found for '{input_pattern}' on '{input_content}'. Make sure your pipeline gate is correct."
         )
     matches_merged = dict(ChainMap(*matches))
-    resolved_transport_props = dict(
-        (key, func(message)) for (key, func) in TRANSPORT_PROPS.items()
-    )
-    available_props = {**matches_merged, **resolved_transport_props}
+    return matches_merged
+
+
+def parse_to_output(tokens: dict[str, str], node: PipelineParserNode) -> Embed | str:
+    output_pattern = node.pattern
     output_pattern_keys = (
         output_pattern
         if isinstance(output_pattern, list)
-        else available_props
-        # `else available_props` because should only happen
+        else tokens
+        # `else tokens` because should only happen
         # (due to above type checks) when output type is content
         # and in that case we want to use everything for formatting output string
         # since selection will be done by str.format
     )
-    selected_props = dict((key, available_props[key]) for key in output_pattern_keys)
-    if parser.output.type == "embed":
+    selected_props = dict((key, tokens[key]) for key in output_pattern_keys)
+    if node.msg_type == "embed":
         embed = Embed()
         for key, value in selected_props.items():
             embed.add_field(name=key, value=value, inline=False)
-        if parser.embed_options:
-            apply_embed_options(embed, parser.embed_options)
         return embed
-    if parser.output.type == "content":
-        return parser.output.pattern.format(**selected_props)
+    if node.msg_type == "content":
+        return output_pattern.format(**selected_props)
     else:
         raise NotImplementedError(
-            f"Only supported output types are embed and content,\nreceived {parser.output.type}"
+            f"Only supported output types are embed and content,\nreceived {node.msg_type}"
         )
+
+
+def parse_message(parser: PipelineParser, message: Message) -> Embed | str:
+    print(f"Parsing {message}")
+    matches = parse_from_input(parser.input, message) if parser.input else {}
+    resolved_transport_props = dict(
+        (key, func(message)) for (key, func) in TRANSPORT_PROPS.items()
+    )
+    available_props = {**matches, **resolved_transport_props}
+    output_msg: str | Embed
+    if parser.output:
+        output_msg = parse_to_output(available_props, parser.output)
+    else:
+        output_msg = message.content or message.embeds[0]
+    if isinstance(output_msg, Embed) and parser.embed_options:
+        apply_embed_options(output_msg, parser.embed_options)
+    return output_msg
 
 
 def pipeline_sender(pipeline: ChatPipeline, input_observer: Observer[MessageEvent]):

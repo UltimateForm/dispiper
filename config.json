@@ -9,11 +9,11 @@
 			"parser": {
 				"input": {
 					"pattern": ".warn %{WORD:PlayFabID} %{WORD:Reason}",
-					"type": "content"
+					"msg_type": "content"
 				},
 				"output": {
 					"pattern": ["PlayFabID", "Author", "Channel", "Reason"],
-					"type": "embed"
+					"msg_type": "embed"
 				}
 			},
 			"channel_id": 1213505932944740433
@@ -27,11 +27,11 @@
 			"parser": {
 				"input": {
 					"pattern": ".warn %{WORD:PlayFabID} %{WORD:Reason}",
-					"type": "content"
+					"msg_type": "content"
 				},
 				"output": {
 					"pattern": "[{UtcTime}]: User {PlayFabID} was warned due to {Reason} by {Author}",
-					"type": "content"
+					"msg_type": "content"
 				}
 			},
 			"channel_id": 1213505932944740433
@@ -45,11 +45,11 @@
 			"parser": {
 				"input": {
 					"pattern": ".removewarn %{WORD:PlayFabID} %{WORD:Reason}",
-					"type": "content"
+					"msg_type": "content"
 				},
 				"output": {
 					"pattern": "[{UtcTime}]: User {PlayFabID} has been unwarned by {Author}",
-					"type": "content"
+					"msg_type": "content"
 				}
 			},
 			"channel_id": 1213894350350852128
@@ -63,11 +63,11 @@
 			"parser": {
 				"input": {
 					"pattern": "embed message:%{WORD:Message} var1:%{WORD:Var1} var2:%{WORD:Var2}",
-					"type": "content"
+					"msg_type": "content"
 				},
 				"output": {
 					"pattern": ["Message", "Var1", "Var2"],
-					"type": "embed"
+					"msg_type": "embed"
 				},
 				"embed_options": {
 					"color": 15844367,
@@ -86,11 +86,11 @@
 			"parser": {
 				"input": {
 					"pattern": ".%{DATESTAMP:date}]: User D1247A0B618D12E was warned due to FFA by %{WORD:warner}",
-					"type": "content"
+					"msg_type": "content"
 				},
 				"output": {
 					"pattern": "Today ({date}) monke has been warned again... by {warner}",
-					"type": "content"
+					"msg_type": "content"
 				}
 			},
 			"channel_id": 1213542630756065341
@@ -109,11 +109,11 @@
 						"Sender": "%{GREEDYDATA:StaffName} \\(%{WORD:StaffId}\\)",
 						"Message": ".warn %{WORD:CulpritId} %{WORD:Reason}"
 					},
-					"type": "embed"
+					"msg_type": "embed"
 				},
 				"output": {
 					"pattern": ["UtcTime", "StaffName", "StaffId", "CulpritId", "Reason"],
-					"type": "embed"
+					"msg_type": "embed"
 				},
 				"embed_options": {
 					"color": 15548997,
@@ -132,11 +132,11 @@
 			"parser": {
 				"input": {
 					"pattern": "^code %{GREEDYDATA:all}",
-					"type": "content"
+					"msg_type": "content"
 				},
 				"output": {
 					"pattern": "`{all}`",
-					"type": "content"
+					"msg_type": "content"
 				}
 			},
 			"channel_id": 1187552820115800177
@@ -144,22 +144,44 @@
 		{
 			"channel_name": "warns",
 			"from_channel": "chatlogs",
+			"gate": {
+				"embed": {
+					"Message": "^.warn"
+				}
+			},
 			"parser": {
 				"input": {
 					"pattern": {
 						"Sender": "%{GREEDYDATA:StaffName} \\(%{WORD:StaffId}\\)",
 						"Message": ".warn %{WORD:CulpritId} %{WORD:Reason}"
 					},
-					"type": "embed"
+					"msg_type": "embed"
 				},
 				"output": {
 					"pattern": ["UtcTime", "StaffName", "StaffId", "CulpritId", "Reason"],
-					"type": "embed"
+					"msg_type": "embed"
 				},
 				"embed_options": {
 					"color": 15548997,
 					"title": "Punishment log",
 					"description": "This was sent from chatlogs channel"
+				}
+			},
+			"channel_id": 1213505932944740433
+		},
+		{
+			"channel_name": "warns",
+			"from_channel": "chatlogs",
+			"gate": {
+				"embed": {
+					"Var1": ".*"
+				}
+			},
+			"parser": {
+				"embed_options": {
+					"color": 11342935,
+					"title": "Edited Embed",
+					"description": "This embed had some options changed"
 				}
 			},
 			"channel_id": 1213505932944740433
